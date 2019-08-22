@@ -6,18 +6,18 @@
 #  Required Gems/Libraries: nokogiri, open-uri, ruby-readability, digest
 #
 #  Usage:
-# 
-#  1. Generate a new folder called "_cache" in your Jekyll directory. 
+#
+#  1. Generate a new folder called "_cache" in your Jekyll directory.
 #     This will hold all linked snippets, so you don't need to regenerate them on every regeneration of your site.
-# 
-#  2. Use the following link syntax: 
-# 
+#
+#  2. Use the following link syntax:
+#
 #     {% preview http://example.com/some-article.html %}
-# 
+#
 #  3. In case we can't fetch the Title from a linksource, you can set it manually:
 #
 #     {% preview "Some Article" http://example.com/some-article.html %}
-# 
+#
 #  Feel free to send a pull-request: https://github.com/aleks/jekyll_preview_tag
 #
 
@@ -51,7 +51,9 @@ module Jekyll
           @preview_title = @link_title
         end
 
-        @preview_content = "<h4><a href='#{@link_url}' target='_blank'>#{@preview_title.to_s}</a></h4><small>#{@preview_text.to_s}</small>"
+        @preview_img_url = get_og_image_url(source)
+
+        @preview_content = "<h4><a href='#{@link_url}' target='_blank'>#{@preview_title.to_s}</a></h4><img width='64' src='#{@preview_img_url}' /><small>#{@preview_text.to_s}</small>"
 
         write_cache(@link_url, @preview_content)
       end
@@ -81,6 +83,13 @@ module Jekyll
       end
     end
 
+    def get_og_image_url(source)
+      if source.css('meta[property="og:image"]').first
+        return source.css('meta[property="og:image"]').first["content"]
+      end
+      return ""
+    end
+
     def cleanup(content)
       content = content.gsub(/\t/,'')
       if content.size < 200
@@ -105,7 +114,6 @@ module Jekyll
     def read_cache(link_url)
       File.read("_cache/#{cache_key(link_url)}")
     end
-    
   end
 end
 
