@@ -41,37 +41,54 @@ module Jekyll
       if cache_exists?(@link_url)
         @preview_content = read_cache(@link_url).to_s
       else
-        source = Nokogiri::HTML(URI.open(@link_url))
+        #the .read fixes utf-8 encoding issues with nokogiri
+        source = Nokogiri::HTML(URI.open(@link_url).read)
 
-        @preview_title, @preview_text = nil
+        #if you set the title, you probably want to override it
+        @preview_title = @link_title
+        @preview_text, @preview_img_url = nil
         head_tag = source.css('head')
         
-        #try getting title:
-        if head_tag.css('meta[property="og:title"]').first
-          @preview_title = cleanup(head_tag.css('meta[property="og:title"]').first["content"])
-        elsif head_tag.css('title').first
-          @preview_title = cleanup(head_tag.css('title').first["content"])
-        elsif head_tag.css('meta[name="dcterms.title"]').first
-          @preview_title = cleanup(head_tag.css('meta[name="dcterms.title"]').first["content"])
-        elsif source.css('.entry-title').first
-          @preview_title = cleanup(source.css('.entry-title').first.content)
-        elsif source.css('.article_title').first
-          @preview_title = cleanup(source.css('.article_title').first.content)
-        elsif source.css('h1').first
-          @preview_title = cleanup(source.css('h1').first.content)
-        elsif source.css('h2').first
-          @preview_title = cleanup(source.css('h2').first.content)
-        elsif source.css('h3').first
-          @preview_title = cleanup(source.css('h3').first.content)
+        unless @preview_title.nil?
+          #try getting title:
+          if head_tag.css('meta[property="og:title"]').first
+            @preview_title = cleanup(head_tag.css('meta[property="og:title"]').first["content"])
+          elsif head_tag.css('meta[name="twitter:title"]').first
+            @preview_title = cleanup(head_tag.css('meta[name="twitter:title"]').first["content"])
+          elsif head_tag.css('title').first
+            @preview_title = cleanup(head_tag.css('title').first["content"])
+          elsif head_tag.css('meta[name="dcterms.title"]').first
+            @preview_title = cleanup(head_tag.css('meta[name="dcterms.title"]').first["content"])
+          elsif source.css('.entry-title').first
+            @preview_title = cleanup(source.css('.entry-title').first.content)
+          elsif source.css('.article_title').first
+            @preview_title = cleanup(source.css('.article_title').first.content)
+          elsif source.css('h1').first
+            @preview_title = cleanup(source.css('h1').first.content)
+          elsif source.css('h2').first
+            @preview_title = cleanup(source.css('h2').first.content)
+          elsif source.css('h3').first
+            @preview_title = cleanup(source.css('h3').first.content)
+          end
         end
 
         #try getting preview text:
         if head_tag.css('meta[property="og:description"]').first
           @preview_text = cleanup(head_tag.css('meta[property="og:description"]').first["content"])
+        elsif head_tag.css('meta[name="twitter:description"]').first
+          @preview_text = cleanup(head_tag.css('meta[name="twitter:description"]').first["content"])
         elsif head_tag.css('meta[name="dcterms.description"]').first
           @preview_text = cleanup(head_tag.css('meta[name="dcterms.description"]').first["content"])
         else
           @preview_text = get_content(source)
+        end
+
+        if head_tag.css('meta[property="og:image"]').first
+          @preview_img_url = head_tag.css('meta[property="og:image"]').first["content"]
+        elsif head_tag.css('meta[name="twitter:image"]').first
+          @preview_img_url = head_tag.css('meta[name="twitter:image""]').first["content"]
+        elsif head_tag.css('link[rel="image_src"]').first
+          @preview_img_url = head_tag.css('link[rel="image_src"]').first["href"]
         end
 
         @preview_img_url = get_og_image_url(source)
