@@ -39,7 +39,7 @@ module Jekyll
 
     def build_preview_content
       if cache_exists?(@link_url)
-        @preview_content = read_cache(@link_url)
+        @preview_content = read_cache(@link_url).to_s
       else
         source = Nokogiri::HTML(URI.open(@link_url))
 
