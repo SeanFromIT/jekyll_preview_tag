@@ -43,10 +43,10 @@ module Jekyll
       else
         source = Nokogiri::HTML(URI.open(@link_url))
 
-        #try getting title:
         @preview_title, @preview_text = nil
         head_tag = source.css('head')
         
+        #try getting title:
         if head_tag.css('meta[property="og:title"]').first
           @preview_title = cleanup(head_tag.css('meta[property="og:title"]').first["content"])
         elsif head_tag.css('title').first
