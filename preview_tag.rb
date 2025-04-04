@@ -29,26 +29,49 @@ require 'digest'
 
 module Jekyll
   class PreviewTag < Liquid::Tag
+
+    @tag_text, @link_url, @link_title = nil
+
     def initialize(tag_name, tag_text, tokens)
       super
-
-      @link_url = tag_text.scan(/https?:\/\/[\S]+/).first
-      @link_title = tag_text.scan(/\"(.*)\"/)[0].to_s.gsub(/\"|\[|\]/,'')
-
-      build_preview_content
+      @tag_text = tag_text
     end
 
     def build_preview_content
       if cache_exists?(@link_url)
-        @preview_content = read_cache(@link_url).to_s
+        @preview_content = read_cache(@link_url)
       else
-        source = Nokogiri::HTML(open(@link_url))
+        source = Nokogiri::HTML(URI.open(@link_url))
 
-        @preview_text = get_content(source)
-        if @link_title == ''
-          @preview_title = get_content_title(source)
+        #try getting title:
+        @preview_title, @preview_text = nil
+        head_tag = source.css('head')
+        
+        if head_tag.css('meta[property="og:title"]').first
+          @preview_title = cleanup(head_tag.css('meta[property="og:title"]').first["content"])
+        elsif head_tag.css('title').first
+          @preview_title = cleanup(head_tag.css('title').first["content"])
+        elsif head_tag.css('meta[name="dcterms.title"]').first
+          @preview_title = cleanup(head_tag.css('meta[name="dcterms.title"]').first["content"])
+        elsif source.css('.entry-title').first
+          @preview_title = cleanup(source.css('.entry-title').first.content)
+        elsif source.css('.article_title').first
+          @preview_title = cleanup(source.css('.article_title').first.content)
+        elsif source.css('h1').first
+          @preview_title = cleanup(source.css('h1').first.content)
+        elsif source.css('h2').first
+          @preview_title = cleanup(source.css('h2').first.content)
+        elsif source.css('h3').first
+          @preview_title = cleanup(source.css('h3').first.content)
+        end
+
+        #try getting preview text:
+        if head_tag.css('meta[property="og:description"]').first
+          @preview_text = cleanup(head_tag.css('meta[property="og:description"]').first["content"])
+        elsif head_tag.css('meta[name="dcterms.description"]').first
+          @preview_text = cleanup(head_tag.css('meta[name="dcterms.description"]').first["content"])
         else
-          @preview_title = @link_title
+          @preview_text = get_content(source)
         end
 
         @preview_img_url = get_og_image_url(source)
@@ -60,27 +83,18 @@ module Jekyll
     end
 
     def render(context)
+      unless @tag_text.nil?
+        rendered_text = Liquid::Template.parse(@tag_text).render(context)
+        @link_url = rendered_text.scan(/https?:\/\/[\S]+/).first.to_s
+        @link_title = rendered_text.scan(/\"(.*)\"/)[0].to_s.gsub(/\"|\[|\]/,'')
+
+        build_preview_content
+      end
       %|#{@preview_content}|
     end
 
     def get_content(source)
-      cleanup(Readability::Document.new(source, :tags => %w[]).content)
-    end
-
-    def get_content_title(source)
-      if source.css('.entry-title').first
-        cleanup(source.css('.entry-title').first.content)
-      elsif source.css('.title').first
-        cleanup(source.css('.title').first.content)
-      elsif source.css('.article_title').first
-        cleanup(source.css('.article_title').first.content)
-      elsif source.css('h1').first
-        cleanup(source.css('h1').first.content)
-      elsif source.css('h2').first
-        cleanup(source.css('h2').first.content)
-      elsif source.css('h3').first
-        cleanup(source.css('h3').first.content)
-      end
+      cleanup(Readability::Document.new(source.to_s, :tags => %w[]).content)
     end
 
     def get_og_image_url(source)
@@ -91,7 +105,7 @@ module Jekyll
     end
 
     def cleanup(content)
-      content = content.gsub(/\t/,'')
+      content = content.to_s.gsub(/\t/,'')
       if content.size < 200
         content
       else
@@ -100,7 +114,7 @@ module Jekyll
     end
 
     def cache_key(link_url)
-      Digest::MD5.hexdigest(link_url)
+      Digest::MD5.hexdigest(link_url.to_s)
     end
 
     def cache_exists?(link_url)
