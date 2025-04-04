@@ -91,8 +91,6 @@ module Jekyll
           @preview_img_url = head_tag.css('link[rel="image_src"]').first["href"]
         end
 
-        @preview_img_url = get_og_image_url(source)
-
         @preview_content = "<h4><a href='#{@link_url}' target='_blank'>#{@preview_title.to_s}</a></h4><img width='64' src='#{@preview_img_url}' /><small>#{@preview_text.to_s}</small>"
 
         write_cache(@link_url, @preview_content)
@@ -112,13 +110,6 @@ module Jekyll
 
     def get_content(source)
       cleanup(Readability::Document.new(source.to_s, :tags => %w[]).content)
-    end
-
-    def get_og_image_url(source)
-      if source.css('meta[property="og:image"]').first
-        return source.css('meta[property="og:image"]').first["content"]
-      end
-      return ""
     end
 
     def cleanup(content)
