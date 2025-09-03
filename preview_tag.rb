@@ -49,7 +49,7 @@ module Jekyll
         @preview_text, @preview_img_url = nil
         head_tag = source.css('head')
         
-        unless @preview_title.nil?
+        if @preview_title.nil?
           #try getting title:
           if head_tag.css('meta[property="og:title"]').first
             @preview_title = cleanup(head_tag.css('meta[property="og:title"]').first["content"])
@@ -101,7 +101,7 @@ module Jekyll
       unless @tag_text.nil?
         rendered_text = Liquid::Template.parse(@tag_text).render(context)
         @link_url = rendered_text.scan(/https?:\/\/[\S]+/).first.to_s
-        @link_title = rendered_text.scan(/\"(.*)\"/)[0].to_s.gsub(/\"|\[|\]/,'')
+        @link_title = rendered_text.scan(/^(.*?)(?:http)/)[0].to_s.gsub(/\"|\[|\]/,'')
 
         build_preview_content
       end
